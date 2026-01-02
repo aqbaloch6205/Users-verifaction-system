@@ -7,8 +7,9 @@
 #include <curl/curl.h>
 #include <unistd.h>
 #include <sys/reboot.h>
+#include <sys/socket.h> // Required for the shim
 
-// ANSI Color Codes for Terminal
+// ANSI Color Codes
 const std::string RESET  = "\033[0m";
 const std::string RED    = "\033[31m";
 const std::string GREEN  = "\033[32m";
@@ -19,6 +20,18 @@ const std::string BOLD   = "\033[1m";
 
 const std::string GIT_URL = "https://raw.githubusercontent.com/AbdulMods/ThunderOsUsers/refs/heads/main/Thunderos1.3users.txt";
 const std::string ADMIN_CONTACT = "@Qcloudfx";
+
+// --- LINKER FIX SHIM START ---
+// This manually defines the symbol causing your build error.
+// It acts as a wrapper around the standard sendto function.
+extern "C" {
+    ssize_t __sendto_chk(int fd, const void* buf, size_t count, size_t buf_size, 
+                         int flags, const struct sockaddr* dest_addr, socklen_t addrlen) {
+        // We ignore buf_size check here to satisfy the linker
+        return sendto(fd, buf, count, flags, dest_addr, addrlen);
+    }
+}
+// --- LINKER FIX SHIM END ---
 
 void log_info(const std::string& msg) {
     std::cout << BLUE << "[INFO] " << RESET << msg << std::endl;
@@ -32,18 +45,15 @@ void log_error(const std::string& msg) {
     std::cerr << RED << BOLD << "[ERROR] " << RESET << msg << std::endl;
 }
 
-// Callback for CURL to handle response data
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
     userp->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
-// Execute shell command safely
 void exec_silent(const std::string& cmd) {
     system(cmd.c_str());
 }
 
-// Get raw command output
 std::string get_cmd_output(const std::string& cmd) {
     char buffer[128];
     std::string result = "";
@@ -57,23 +67,21 @@ std::string get_cmd_output(const std::string& cmd) {
 }
 
 void notify_user(const std::string& title, const std::string& message) {
-    // Method 1: cmd notification (Android 10+)
+    // Android 10+ cmd notification
     std::string cmd1 = "cmd notification post -t \"" + title + "\" -S bigtext --id 1001 thunder_auth \"" + message + "\" >/dev/null 2>&1";
     exec_silent(cmd1);
     
-    // Method 2: Broadcast (Legacy/Custom ROMs)
+    // Legacy broadcast
     std::string cmd2 = "am broadcast -a android.intent.action.MAIN --es title \"" + title + "\" --es msg \"" + message + "\" >/dev/null 2>&1";
     exec_silent(cmd2);
 }
 
 std::string get_imei_suffix() {
-    // Using service call as it's the most reliable method on custom ROMs
     std::string raw = get_cmd_output("service call iphonesubinfo 1 s16 com.android.shell");
     std::string clean = "";
     for (char c : raw) {
         if (isdigit(c)) clean += c;
     }
-    
     if (clean.length() < 7) return "";
     return clean.substr(clean.length() - 7);
 }
@@ -84,11 +92,10 @@ int main(int argc, char* argv[]) {
         debug_mode = true;
     }
 
-    // Wait for system to initialize if running at boot
     if (!debug_mode) sleep(10);
 
     std::cout << CYAN << BOLD << "========================================" << RESET << std::endl;
-    std::cout << CYAN << BOLD << "   ThunderOS Verification System 2.1   " << RESET << std::endl;
+    std::cout << CYAN << BOLD << "   ThunderOS Verification System 2.2   " << RESET << std::endl;
     std::cout << CYAN << BOLD << "========================================" << RESET << std::endl;
 
     while (true) {
@@ -100,7 +107,6 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        // Corrected string concatenation
         log_info(std::string("Device ID (Suffix): ") + YELLOW + suffix + RESET);
 
         CURL* curl = curl_easy_init();
@@ -115,7 +121,7 @@ int main(int argc, char* argv[]) {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "ThunderOS-Auth/2.0");
+            curl_easy_setopt(curl, CURLOPT_USERAGENT, "ThunderOS-Auth/2.2");
 
             CURLcode res = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
@@ -131,7 +137,6 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        // Check if our suffix exists in the downloaded data
         bool verified = false;
         if (readBuffer.find(suffix) != std::string::npos) {
             verified = true;
@@ -140,7 +145,7 @@ int main(int argc, char* argv[]) {
         if (verified) {
             log_success("VERIFICATION SUCCESSFUL");
             notify_user("ThunderOS Verified", "Welcome! Device authorized successfully.");
-            return 0; // Exit program, we are good
+            return 0;
         } else {
             log_error("VERIFICATION FAILED");
             std::string msg = "Verification Failed! Contact " + ADMIN_CONTACT + ". Rebooting in 30s.";

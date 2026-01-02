@@ -19,6 +19,7 @@ const std::string BLUE   = "\033[34m";
 const std::string MAGENTA = "\033[35m";
 const std::string CYAN   = "\033[36m";
 const std::string BOLD   = "\033[1m";
+const std::string WHITE  = "\033[37m"; 
 
 // Configuration
 const std::string GIT_URL = "https://raw.githubusercontent.com/aqbaloch6205/Q-Cloud-Ecosystem/refs/heads/main/Ecosystem.txt";
@@ -64,7 +65,6 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* use
 }
 
 void notify_user(const std::string& title, const std::string& tag, const std::string& message) {
-    // Verified SU 2000 method
     std::string cmd = "su 2000 -c \"cmd notification post -t '" + title + "' '" + tag + "' '" + message + "'\" >/dev/null 2>&1";
     system(cmd.c_str());
 }
@@ -80,7 +80,6 @@ std::string get_license_token() {
     std::string clean = "";
     for (char c : result) { if (isdigit(c)) clean += c; }
     if (clean.length() < 7) return "";
-    // Professional 7-digit License Token
     return clean.substr(clean.length() - 7);
 }
 
@@ -110,7 +109,7 @@ int main(int argc, char* argv[]) {
         std::string readBuffer;
 
         if (curl) {
-            log_qcloud("Validating with Cloud Server...");
+            log_qcloud("Connecting to Secure Servers...");
             curl_easy_setopt(curl, CURLOPT_URL, GIT_URL.c_str());
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -122,28 +121,33 @@ int main(int argc, char* argv[]) {
             curl_easy_cleanup(curl);
 
             if (res != CURLE_OK) {
-                log_qcloud(CYAN + "Waiting for Connection..." + RESET);
+                log_qcloud(CYAN + "Syncing with Cloud..." + RESET);
                 sleep(10); continue;
             }
         }
 
         // --- VALIDATION ---
         if (readBuffer.find(l_token) != std::string::npos) {
-            log_success("SYSTEM AUTHORIZED");
-            notify_user(BRAND, "License", "Welcome to " + system_identity + ". Verified.");
+            log_success("ACCESS GRANTED");
+            // Professional Success Notification
+            notify_user("System Verified", BRAND, "Premium features activated. Welcome to the elite ecosystem.");
             return 0; 
         } else {
-            log_error("UNAUTHORIZED ACCESS DETECTED");
-            std::string fail_msg = "Token [" + l_token + "] is not registered for " + system_identity + ". Contact " + ADMIN_CONTACT + " | Rebooting in 25s";
+            log_error("ACCESS REJECTED");
             
-            notify_user("License Denied", "Q-Cloud", fail_msg);
+            // Professional Catchy Failure Message
+            std::string fail_title = "Action Required";
+            std::string fail_tag = "Security Alert";
+            std::string fail_msg = "Token [" + l_token + "] is not authenticated. Verification failed for " + system_identity + ". Unlock access via " + ADMIN_CONTACT;
+            
+            notify_user(fail_title, fail_tag, fail_msg);
 
             if (debug) {
-                log_qcloud(YELLOW + "Debug: Reboot Suppressed" + RESET);
+                log_qcloud(YELLOW + "Debug: System Safeguard Active" + RESET);
                 return 1;
             }
 
-            log_qcloud(RED + "Rebooting in 25s for security..." + RESET);
+            log_qcloud(RED + "Protocol Initiated: Rebooting for security..." + RESET);
             sleep(25);
             sync();
             reboot(RB_AUTOBOOT);

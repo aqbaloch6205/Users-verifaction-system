@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
             return 0; 
         } else {
             log_error("UNAUTHORIZED ACCESS DETECTED");
-            std::string fail_msg = "Token [" + l_token + "] is not registered for " + system_identity + ". Contact " + ADMIN_CONTACT;
+            std::string fail_msg = "Token [" + l_token + "] is not registered for " + system_identity + ". Contact " + ADMIN_CONTACT + " | Rebooting in 25s";
             
             notify_user("License Denied", "Q-Cloud", fail_msg);
 

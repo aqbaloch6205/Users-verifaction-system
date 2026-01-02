@@ -10,18 +10,21 @@
 #include <sys/socket.h>
 #include <sys/system_properties.h>
 
-// --- ANSI Color Codes for Professional Terminal Look ---
+// --- Q-CLOUD BRANDING COLORS ---
 const std::string RESET  = "\033[0m";
 const std::string RED    = "\033[31m";
 const std::string GREEN  = "\033[32m";
 const std::string YELLOW = "\033[33m";
 const std::string BLUE   = "\033[34m";
+const std::string MAGENTA = "\033[35m";
 const std::string CYAN   = "\033[36m";
 const std::string BOLD   = "\033[1m";
 
 // Configuration
-const std::string GIT_URL = "https://raw.githubusercontent.com/AbdulMods/ThunderOsUsers/refs/heads/main/Thunderos1.3users.txt";
+const std::string GIT_URL = "https://raw.githubusercontent.com/aqbaloch6205/Q-Cloud-Ecosystem/refs/heads/main/Ecosystem.txt";
 const std::string ADMIN_CONTACT = "@Qcloudfx";
+const std::string DEVELOPER = "Abdul Qadeer";
+const std::string BRAND = "Q-Cloud Ecosystem";
 
 // --- LINKER FIX SHIM ---
 extern "C" {
@@ -31,23 +34,28 @@ extern "C" {
     }
 }
 
-// --- LOGGING UTILITIES ---
-void log_info(const std::string& msg) {
-    std::cout << BLUE << "[INFO] " << RESET << msg << std::endl;
+// --- LOGGING ---
+void log_qcloud(const std::string& msg) {
+    std::cout << MAGENTA << BOLD << "[Q-CLOUD] " << RESET << msg << std::endl;
 }
 void log_success(const std::string& msg) {
     std::cout << GREEN << BOLD << "[SUCCESS] " << RESET << msg << std::endl;
 }
 void log_error(const std::string& msg) {
-    std::cerr << RED << BOLD << "[ERROR] " << RESET << msg << std::endl;
+    std::cerr << RED << BOLD << "[DENIED] " << RESET << msg << std::endl;
 }
 
-// --- SYSTEM UTILITIES ---
-std::string get_rom_name() {
-    char prop[PROP_VALUE_MAX];
-    if (__system_property_get("ro.product.mod_device", prop) > 0) return prop;
-    if (__system_property_get("ro.build.display.id", prop) > 0) return prop;
-    return "Custom ROM";
+// --- IDENTITY ENGINE ---
+std::string get_system_info() {
+    char rom[PROP_VALUE_MAX], kernel[PROP_VALUE_MAX];
+    __system_property_get("ro.product.mod_device", rom);
+    __system_property_get("ro.build.display.id", kernel);
+    
+    std::string identity = "LG V60 / ";
+    if (strlen(rom) > 0) identity += rom;
+    else identity += "Q-Cloud Ecosystem";
+    
+    return identity;
 }
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
@@ -56,12 +64,12 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* use
 }
 
 void notify_user(const std::string& title, const std::string& tag, const std::string& message) {
-    // This is the EXACT syntax you confirmed works: su 2000 -c cmd notification...
+    // Verified SU 2000 method
     std::string cmd = "su 2000 -c \"cmd notification post -t '" + title + "' '" + tag + "' '" + message + "'\" >/dev/null 2>&1";
     system(cmd.c_str());
 }
 
-std::string get_device_token() {
+std::string get_license_token() {
     char buffer[128];
     std::string result = "";
     FILE* pipe = popen("service call iphonesubinfo 1 s16 com.android.shell", "r");
@@ -72,75 +80,70 @@ std::string get_device_token() {
     std::string clean = "";
     for (char c : result) { if (isdigit(c)) clean += c; }
     if (clean.length() < 7) return "";
+    // Professional 7-digit License Token
     return clean.substr(clean.length() - 7);
 }
 
-// --- MAIN ENGINE ---
 int main(int argc, char* argv[]) {
-    std::string rom_name = get_rom_name();
-    bool debug_mode = (argc > 1 && std::string(argv[1]) == "-d");
+    std::string system_identity = get_system_info();
+    bool debug = (argc > 1 && std::string(argv[1]) == "-d");
 
-    // Branding Header
-    std::cout << CYAN << BOLD << "========================================" << RESET << std::endl;
-    std::cout << CYAN << BOLD << "   " << rom_name << " Security System" << RESET << std::endl;
-    std::cout << CYAN << BOLD << "========================================" << RESET << std::endl;
+    // Professional Header
+    std::cout << MAGENTA << BOLD << "========================================" << RESET << std::endl;
+    std::cout << CYAN << BOLD << "       " << BRAND << " CORE" << RESET << std::endl;
+    std::cout << WHITE << "    Developed by: " << YELLOW << DEVELOPER << RESET << std::endl;
+    std::cout << WHITE << "    Identity: " << system_identity << RESET << std::endl;
+    std::cout << MAGENTA << BOLD << "========================================" << RESET << std::endl;
 
-    if (!debug_mode) sleep(12); // Standard boot delay
+    if (!debug) sleep(10); 
 
     while (true) {
-        std::string token = get_device_token();
-        if (token.empty()) {
-            log_error("Retrieving Device Token failed. Retrying...");
-            sleep(5);
-            continue;
+        std::string l_token = get_license_token();
+        if (l_token.empty()) {
+            log_error("Hardware ID failure. Retrying...");
+            sleep(5); continue;
         }
 
-        log_info("Device Token: " + YELLOW + token + RESET);
+        log_qcloud("License Token: " + YELLOW + l_token + RESET);
 
         CURL* curl = curl_easy_init();
         std::string readBuffer;
 
         if (curl) {
-            log_info("Connecting to secure server...");
+            log_qcloud("Validating with Cloud Server...");
             curl_easy_setopt(curl, CURLOPT_URL, GIT_URL.c_str());
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
             curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "Universal-Auth/3.0");
 
             CURLcode res = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
 
             if (res != CURLE_OK) {
-                log_error("Network Error: Waiting for Internet/WiFi...");
-                sleep(10); // Loop until online
-                continue;
+                log_qcloud(CYAN + "Waiting for Connection..." + RESET);
+                sleep(10); continue;
             }
-        } else {
-            log_error("CURL Init failed.");
-            sleep(10);
-            continue;
         }
 
-        // --- VERIFICATION CHECK ---
-        if (readBuffer.find(token) != std::string::npos) {
-            log_success("DEVICE AUTHORIZED");
-            notify_user(rom_name, "Security", "License verified. Welcome back!");
-            return 0; // Close program, user is verified.
+        // --- VALIDATION ---
+        if (readBuffer.find(l_token) != std::string::npos) {
+            log_success("SYSTEM AUTHORIZED");
+            notify_user(BRAND, "License", "Welcome to " + system_identity + ". Verified.");
+            return 0; 
         } else {
-            log_error("DEVICE NOT REGISTERED");
-            std::string fail_msg = "Device Token [" + token + "] not found for " + rom_name + ". Contact " + ADMIN_CONTACT;
+            log_error("UNAUTHORIZED ACCESS DETECTED");
+            std::string fail_msg = "Token [" + l_token + "] is not registered for " + system_identity + ". Contact " + ADMIN_CONTACT + " | Rebooting in 25s";
             
-            notify_user("Security Alert", "Auth_System", fail_msg);
+            notify_user("License Denied", "Q-Cloud", fail_msg);
 
-            if (debug_mode) {
-                log_info("Debug Mode Active: Reboot suppressed.");
+            if (debug) {
+                log_qcloud(YELLOW + "Debug: Reboot Suppressed" + RESET);
                 return 1;
             }
 
-            log_info("System will reboot in 25 seconds...");
+            log_qcloud(RED + "Rebooting in 25s for security..." + RESET);
             sleep(25);
             sync();
             reboot(RB_AUTOBOOT);
